@@ -68,6 +68,8 @@ def find_clusters_single_linkage(
 
     bayes = []
     best_bayes = np.inf
+    best_labels: np.array = None
+    best_n: int = 0
     for n in range(75, data.shape[0]):
         cluster_labels = fcluster(linkage_arr, t=n, criterion="maxclust")
         bayes_factor = assign_cluster_neg_bayes(cluster_labels, data)
