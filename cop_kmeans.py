@@ -2,9 +2,16 @@
 import random
 
 
-def cop_kmeans(dataset, k, ml=None, cl=None,
-               initialization='kmpp',
-               max_iter=300, tol=1e-4):
+def cop_kmeans(
+    dataset,
+    k,
+    ml=None,
+    cl=None,
+    initialization="kmpp",
+    max_iter=300,
+    tol=1e-4,
+    sample_weights=None,
+):
     if cl is None:
         cl = []
     if ml is None:
@@ -13,7 +20,7 @@ def cop_kmeans(dataset, k, ml=None, cl=None,
     ml_info = get_ml_info(ml, dataset)
     tol = tolerance(tol, dataset)
 
-    centers = initialize_centers(dataset, k, initialization)
+    centers = initialize_centers(dataset, k, initialization, sample_weights)
 
     for _ in range(max_iter):
         clusters_ = [-1] * len(dataset)
@@ -53,23 +60,25 @@ def tolerance(tol, dataset):
     n = len(dataset)
     dim = len(dataset[0])
     averages = [sum(dataset[i][d] for i in range(n)) / float(n) for d in range(dim)]
-    variances = [sum((dataset[i][d] - averages[d]) ** 2 for i in range(n)) / float(n) for d in range(dim)]
+    variances = [
+        sum((dataset[i][d] - averages[d]) ** 2 for i in range(n)) / float(n)
+        for d in range(dim)
+    ]
     return tol * sum(variances) / dim
 
 
 def closest_clusters(centers, datapoint):
-    distances = [l2_distance(center, datapoint) for
-                 center in centers]
+    distances = [l2_distance(center, datapoint) for center in centers]
     return sorted(range(len(distances)), key=lambda x: distances[x]), distances
 
 
 def initialize_centers(dataset, k, method):
-    if method == 'random':
+    if method == "random":
         ids = list(range(len(dataset)))
         random.shuffle(ids)
         return [dataset[i] for i in ids[:k]]
 
-    elif method == 'kmpp':
+    elif method == "kmpp":
         chances = [1] * len(dataset)
         centers = []
 
@@ -102,7 +111,7 @@ def violate_constraints(data_index, cluster_index, clusters, ml, cl):
     return False
 
 
-def compute_centers(clusters, dataset, k, ml_info):
+def compute_centers(clusters, dataset, k, ml_info, sample_weights):
     cluster_ids = set(clusters)
     k_new = len(cluster_ids)
     id_map = dict(zip(cluster_ids, range(k_new)))
@@ -114,8 +123,8 @@ def compute_centers(clusters, dataset, k, ml_info):
     counts = [0] * k_new
     for j, c in enumerate(clusters):
         for i in range(dim):
-            centers[c][i] += dataset[j][i]
-        counts[c] += 1
+            centers[c][i] += dataset[j][i] * sample_weights[j]
+        counts[c] += sample_weights[j]
 
     for j in range(k_new):
         for i in range(dim):
@@ -123,12 +132,15 @@ def compute_centers(clusters, dataset, k, ml_info):
 
     if k_new < k:
         ml_groups, ml_scores, ml_centroids = ml_info
-        current_scores = [sum(l2_distance(centers[clusters[i]], dataset[i])
-                              for i in group)
-                          for group in ml_groups]
-        group_ids = sorted(range(len(ml_groups)),
-                           key=lambda x: current_scores[x] - ml_scores[x],
-                           reverse=True)
+        current_scores = [
+            sum(l2_distance(centers[clusters[i]], dataset[i]) for i in group)
+            for group in ml_groups
+        ]
+        group_ids = sorted(
+            range(len(ml_groups)),
+            key=lambda x: current_scores[x] - ml_scores[x],
+            reverse=True,
+        )
 
         for j in range(k - k_new):
             gid = group_ids[j]
@@ -144,7 +156,8 @@ def get_ml_info(ml, dataset):
     flags = [True] * len(dataset)
     groups = []
     for i in range(len(dataset)):
-        if not flags[i]: continue
+        if not flags[i]:
+            continue
         group = list(ml[i] | {i})
         groups.append(group)
         for j in group:
@@ -160,9 +173,10 @@ def get_ml_info(ml, dataset):
                 centroids[j][d] += dataset[i][d]
             centroids[j][d] /= float(len(group))
 
-    scores = [sum(l2_distance(centroids[j], dataset[i])
-                  for i in groups[j])
-              for j in range(len(groups))]
+    scores = [
+        sum(l2_distance(centroids[j], dataset[i]) for i in groups[j])
+        for j in range(len(groups))
+    ]
 
     return groups, scores, centroids
 
@@ -209,6 +223,6 @@ def transitive_closure(ml, cl, n):
     for i in ml_graph:
         for j in ml_graph[i]:
             if j != i and j in cl_graph[i]:
-                raise Exception('inconsistent constraints between %d and %d' % (i, j))
+                raise Exception("inconsistent constraints between %d and %d" % (i, j))
 
     return ml_graph, cl_graph
