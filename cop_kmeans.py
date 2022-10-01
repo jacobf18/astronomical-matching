@@ -1,29 +1,57 @@
 # -*- coding: utf-8 -*-
+from optparse import Option
 import random
+from re import I
+import numpy as np
+from numpy.typing import ArrayLike
+from typing import Optional
 
 
 def cop_kmeans(
-    dataset,
-    k,
-    ml=None,
-    cl=None,
-    initialization="kmpp",
-    max_iter=300,
-    tol=1e-4,
-    sample_weights=None,
-):
+    dataset: ArrayLike,
+    k: int,
+    ml: Optional[list[tuple[int, int]]] = None,
+    cl: Optional[list[tuple[int, int]]] = None,
+    initialization: str = "kmpp",
+    max_iter: int = 300,
+    tol: float = 1e-4,
+    sample_weights: Optional[ArrayLike] = None,
+) -> tuple[Optional[list], Optional[ArrayLike]]:
+    """COP-KMeans algorithm
+
+    Args:
+        dataset (ArrayLike): 2D array of data points
+        k (int): number of clusters
+        ml (Optional[list[tuple[int, int]]], optional): Must-Link list. Defaults to None.
+        cl (Optional[list[tuple[int, int]]], optional): Cannot-Link list. Defaults to None.
+        initialization (str, optional): Type of initialization. Defaults to "kmpp".
+        max_iter (int, optional): Maximum number of iterations. Defaults to 300.
+        tol (float, optional): Tolerance for early stopping. Defaults to 1e-4.
+        sample_weights (Optional[ArrayLike], optional): Sample weights for weighted kmeans. Defaults to None.
+
+    Returns:
+        tuple[Optional[list[int]], Optional[ArrayLike]]: Clusters, Centers
+    """
     if cl is None:
         cl = []
     if ml is None:
         ml = []
+    if sample_weights is None:
+        sample_weights = [1] * len(dataset)
+
+    # Initialize COP information
     ml, cl = transitive_closure(ml, cl, len(dataset))
-    ml_info = get_ml_info(ml, dataset)
+    ml_info = get_ml_info(ml, dataset, sample_weights)
     tol = tolerance(tol, dataset)
 
+    # Initialize clusters
     centers = initialize_centers(dataset, k, initialization, sample_weights)
 
+    # Run COP-KMeans
     for _ in range(max_iter):
-        clusters_ = [-1] * len(dataset)
+        clusters_ = [-1] * len(dataset)  # -1 means unassigned
+
+        # Assign points to clusters
         for i, d in enumerate(dataset):
             indices, _ = closest_clusters(centers, d)
             counter = 0
@@ -41,11 +69,17 @@ def cop_kmeans(
                 if not found_cluster:
                     return None, None
 
-        clusters_, centers_ = compute_centers(clusters_, dataset, k, ml_info)
+        # Update centers
+        clusters_, centers_ = compute_centers(
+            clusters_, dataset, k, ml_info, sample_weights
+        )
+
+        # Check for convergence
         shift = sum(l2_distance(centers[i], centers_[i]) for i in range(k))
         if shift <= tol:
             break
 
+        # Update clusters
         centers = centers_
 
     return clusters_, centers_
@@ -55,16 +89,16 @@ def l2_distance(point1, point2):
     return sum([(float(i) - float(j)) ** 2 for (i, j) in zip(point1, point2)])
 
 
-# taken from scikit-learn (https://goo.gl/1RYPP5)
-def tolerance(tol, dataset):
-    n = len(dataset)
-    dim = len(dataset[0])
-    averages = [sum(dataset[i][d] for i in range(n)) / float(n) for d in range(dim)]
-    variances = [
-        sum((dataset[i][d] - averages[d]) ** 2 for i in range(n)) / float(n)
-        for d in range(dim)
-    ]
-    return tol * sum(variances) / dim
+def tolerance(tol: float, dataset: ArrayLike):
+    # n = len(dataset)
+    # dim = len(dataset[0])
+    # averages = [sum(dataset[i][d] for i in range(n)) / float(n) for d in range(dim)]
+    # variances = [
+    #     sum((dataset[i][d] - averages[d]) ** 2 for i in range(n)) / float(n)
+    #     for d in range(dim)
+    # ]
+    # return tol * sum(variances) / dim
+    return np.mean(np.var(dataset, axis=0)) * tol
 
 
 def closest_clusters(centers, datapoint):
@@ -72,14 +106,17 @@ def closest_clusters(centers, datapoint):
     return sorted(range(len(distances)), key=lambda x: distances[x]), distances
 
 
-def initialize_centers(dataset, k, method):
+def initialize_centers(
+    dataset: ArrayLike, k: int, method: str, sample_weights: ArrayLike
+):
     if method == "random":
         ids = list(range(len(dataset)))
         random.shuffle(ids)
         return [dataset[i] for i in ids[:k]]
 
     elif method == "kmpp":
-        chances = [1] * len(dataset)
+        # chances = [1] * len(dataset)
+        chances = sample_weights
         centers = []
 
         for _ in range(k):
@@ -99,7 +136,13 @@ def initialize_centers(dataset, k, method):
         return centers
 
 
-def violate_constraints(data_index, cluster_index, clusters, ml, cl):
+def violate_constraints(
+    data_index,
+    cluster_index,
+    clusters: ArrayLike,
+    ml: list[tuple[int, int]],
+    cl: list[tuple[int, int]],
+):
     for i in ml[data_index]:
         if clusters[i] != -1 and clusters[i] != cluster_index:
             return True
@@ -111,7 +154,9 @@ def violate_constraints(data_index, cluster_index, clusters, ml, cl):
     return False
 
 
-def compute_centers(clusters, dataset, k, ml_info, sample_weights):
+def compute_centers(
+    clusters: ArrayLike, dataset: ArrayLike, k: int, ml_info, sample_weights: ArrayLike
+):
     cluster_ids = set(clusters)
     k_new = len(cluster_ids)
     id_map = dict(zip(cluster_ids, range(k_new)))
@@ -141,7 +186,6 @@ def compute_centers(clusters, dataset, k, ml_info, sample_weights):
             key=lambda x: current_scores[x] - ml_scores[x],
             reverse=True,
         )
-
         for j in range(k - k_new):
             gid = group_ids[j]
             cid = k_new + j
@@ -152,7 +196,9 @@ def compute_centers(clusters, dataset, k, ml_info, sample_weights):
     return clusters, centers
 
 
-def get_ml_info(ml, dataset):
+def get_ml_info(
+    ml: list[tuple[int, int]], dataset: ArrayLike, sample_weights: ArrayLike
+):
     flags = [True] * len(dataset)
     groups = []
     for i in range(len(dataset)):
@@ -169,9 +215,11 @@ def get_ml_info(ml, dataset):
 
     for j, group in enumerate(groups):
         for d in range(dim):
+            count = 0
             for i in group:
-                centroids[j][d] += dataset[i][d]
-            centroids[j][d] /= float(len(group))
+                centroids[j][d] += dataset[i][d] * sample_weights[i]
+                count += sample_weights[i]
+            centroids[j][d] /= count
 
     scores = [
         sum(l2_distance(centroids[j], dataset[i]) for i in groups[j])
@@ -181,7 +229,7 @@ def get_ml_info(ml, dataset):
     return groups, scores, centroids
 
 
-def transitive_closure(ml, cl, n):
+def transitive_closure(ml: list[tuple[int, int]], cl: list[tuple[int, int]], n: int):
     ml_graph = dict()
     cl_graph = dict()
     for i in range(n):
