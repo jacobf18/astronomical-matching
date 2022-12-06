@@ -1,2 +1,8 @@
+SimplexPricing  0
 Heuristics  0.001
 NodefileStart  5
+VarBranch  1
+Cuts  3
+CutPasses  3
+GomoryPasses  1
+TuneTimeLimit  43200
