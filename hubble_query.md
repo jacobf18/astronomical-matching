@@ -123,7 +123,7 @@ order by Level, SourceID -- better order by Level, SubID, SourceID
 Query with Ra and Dec with coordinates:
 
 ```SQL
-select m.MatchID, m.SubID, m.RA, m.Dec, s.ImageID, l.SourceID, l.X, l.Y, l.Z, l.sigma
+select m.MatchID, m.SubID, m.RA, m.Dec, s.ImageID, l.SourceID, l.X, l.Y, l.Z, s.sigma
 from HSCv3.xrun.Matches m
         join HSCv3.xrun.MatchLinks l on l.MatchID=m.MatchID and l.Level=m.Level and l.JobID=m.JobID and l.SubID=m.SubID
         join HSCv3.whl.Sources s on s.SourceID=l.SourceID
