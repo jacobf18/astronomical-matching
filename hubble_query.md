@@ -131,3 +131,82 @@ where m.JobID=35604 and m.MatchID=4000710334517
         and m.Level=m.BestLevel -- for best results
 order by m.MatchID, m.SubID, s.ImageID, s.SourceID
 ```
+
+Get data by number of sources.
+``` SQL
+ 
+select top 1000 t.GroupID, t.TaskID, j.JobID, MatchID, Level, BestLevel, NumSources
+from hscv3.xrun.Tasks t
+   join hscv3.xrun.Jobs j on j.TaskID=t.TaskID
+   join hscv3.xrun.Matches m on m.JobID=j.JobID
+where t.Stage = 2 -- last step
+   and j.Progress = 100 -- job completed
+   and m.Level = 0 -- FoF
+   and m.NumSources between 20 and 30
+```
+
+``` SQL
+select m.MatchID, m.RA, m.Dec, m.Level, m.SubID, s.ImageID, l.SourceID, l.X, l.Y, l.Z, s.Sigma
+from HSCv3.xrun.Matches m
+        join HSCv3.xrun.MatchLinks l on l.MatchID=m.MatchID and l.Level=m.Level and l.JobID=m.JobID and l.SubID=m.SubID
+        join HSCv3.whl.Sources s on s.SourceID=l.SourceID
+where m.JobID=33032 and m.MatchID=6000160767697 -- user input
+        and m.Level=m.BestLevel -- for best results
+order by m.MatchID, m.SubID, s.ImageID, s.SourceID
+```
+
+Group of overlapping images for Hubble Deep Fields:
+
+``` SQL
+select * from hscv3.whl.Groups
+where TargetName like 'HDF%'
+```
+
+Group of images with fewer members:
+
+``` sql
+select * from hscv3.whl.Groups
+where NumImages between 20 and 30
+```
+
+Pick a group and get the sources with updated coordinates:
+
+```sql
+select top 10 s.ImageID, c.*
+from hscv3.xrun.Tasks t
+   join hscv3.xrun.Jobs j on j.TaskID=t.TaskID
+   join hscv3.xrun.TempCatalog c on c.JobID=j.JobID
+   join hscv3.whl.Sources s on s.SourceID=c.SourceID
+where t.GroupID = 79757
+   and t.Stage = 2 -- final stage
+   and j.Progress = 100 -- completed
+order by ImageID
+```
+
+When you remove the “top 10” to everything, you might run into limitations...
+
+Then you have to use the “Submit” button instead of “Quick” to save a table in your my db. Specify a name in the text field above the query or in the query using the “into” keyword:
+
+```sql
+select s.ImageID, c.*, s.RA, s.Dec
+into mydb.MyHDF
+from hscv3.xrun.Tasks t
+   join hscv3.xrun.Jobs j on j.TaskID=t.TaskID
+   join hscv3.xrun.TempCatalog c on c.JobID=j.JobID
+   join hscv3.whl.Sources s on s.SourceID=c.SourceID
+where t.GroupID = 79757
+   and t.Stage = 2 -- final stage
+   and j.Progress = 100 -- completed
+order by ImageID
+```
+
+From there you can export the table later using the tools on the MyDB tab.
+
+If you want the original “uncorrected” directions, there is simpler query to get that, something like
+
+```sql
+select top 10 s.ImageID, s.SourceID, s.Instrument, s.Catalog, s.X, s.Y, s.Z, s.Sigma, s.Counts
+from hscv3.whl.GroupMembers m
+   join hscv3.whl.Sources s on s.ImageID = m.MemberID
+where m.GroupID = 79757
+```

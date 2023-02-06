@@ -6,3 +6,5 @@
 **/figures/
 **/grbnodes*/
 *.prm
+
+**/big_data/*
