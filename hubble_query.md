@@ -146,7 +146,7 @@ where t.Stage = 2 -- last step
 ```
 
 ``` SQL
-select m.MatchID, m.RA, m.Dec, m.Level, m.SubID, s.ImageID, l.SourceID, l.X, l.Y, l.Z, s.Sigma
+select m.MatchID, m.Level, m.SubID, s.ImageID, l.SourceID, l.X, l.Y, l.Z, s.Sigma, s.RA, s.Dec
 from HSCv3.xrun.Matches m
         join HSCv3.xrun.MatchLinks l on l.MatchID=m.MatchID and l.Level=m.Level and l.JobID=m.JobID and l.SubID=m.SubID
         join HSCv3.whl.Sources s on s.SourceID=l.SourceID
