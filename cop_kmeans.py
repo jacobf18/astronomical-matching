@@ -4,19 +4,20 @@ import random
 from re import I
 import numpy as np
 from numpy.typing import ArrayLike
-from typing import Optional
+from typing import Optional, List, Tuple
+from scipy.spatial.distance import cdist
 
 
 def cop_kmeans(
     dataset: ArrayLike,
     k: int,
-    ml: Optional[list[tuple[int, int]]] = None,
-    cl: Optional[list[tuple[int, int]]] = None,
+    ml: Optional[List[Tuple[int, int]]] = None,
+    cl: Optional[List[Tuple[int, int]]] = None,
     initialization: str = "kmpp",
     max_iter: int = 300,
     tol: float = 1e-4,
     sample_weights: Optional[ArrayLike] = None,
-) -> tuple[Optional[list], Optional[ArrayLike]]:
+) -> Tuple[Optional[list], Optional[ArrayLike]]:
     """COP-KMeans algorithm
 
     Args:
@@ -140,8 +141,8 @@ def violate_constraints(
     data_index,
     cluster_index,
     clusters: ArrayLike,
-    ml: list[tuple[int, int]],
-    cl: list[tuple[int, int]],
+    ml: List[Tuple[int, int]],
+    cl: List[Tuple[int, int]],
 ):
     for i in ml[data_index]:
         if clusters[i] != -1 and clusters[i] != cluster_index:
@@ -197,7 +198,7 @@ def compute_centers(
 
 
 def get_ml_info(
-    ml: list[tuple[int, int]], dataset: ArrayLike, sample_weights: ArrayLike
+    ml: List[Tuple[int, int]], dataset: ArrayLike, sample_weights: ArrayLike
 ):
     flags = [True] * len(dataset)
     groups = []
@@ -229,7 +230,7 @@ def get_ml_info(
     return groups, scores, centroids
 
 
-def transitive_closure(ml: list[tuple[int, int]], cl: list[tuple[int, int]], n: int):
+def transitive_closure(ml: List[Tuple[int, int]], cl: List[Tuple[int, int]], n: int):
     ml_graph = dict()
     cl_graph = dict()
     for i in range(n):
