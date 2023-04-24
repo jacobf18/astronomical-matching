@@ -8,3 +8,4 @@
 *.prm
 
 **/big_data/*
+**/*.svg
