@@ -1,37 +1,32 @@
-# -*- coding: utf-8 -*-
-# from optparse import Option
-import random
-# from re import I
 import numpy as np
-from numpy.typing import ArrayLike
-from typing import Optional, List, Tuple
-# from scipy.spatial.distance import cdist
+from typing import Optional
+import random
 
 
 def cop_kmeans(
-    dataset: ArrayLike,
+    dataset: list[list[int]],
     k: int,
-    ml: Optional[List[Tuple[int, int]]] = None,
-    cl: Optional[List[Tuple[int, int]]] = None,
+    ml: Optional[list[tuple[int, int]]] = None,
+    cl: Optional[list[tuple[int, int]]] = None,
     initialization: str = "kmpp",
     max_iter: int = 300,
     tol: float = 1e-4,
-    sample_weights: Optional[ArrayLike] = None,
-) -> Tuple[Optional[list], Optional[ArrayLike]]:
+    sample_weights: Optional[list] = None,
+) -> tuple[Optional[list], Optional[list]]:
     """COP-KMeans algorithm
 
     Args:
-        dataset (ArrayLike): 2D array of data points
+        dataset (list): 2D array of data points
         k (int): number of clusters
         ml (Optional[list[tuple[int, int]]], optional): Must-Link list. Defaults to None.
         cl (Optional[list[tuple[int, int]]], optional): Cannot-Link list. Defaults to None.
         initialization (str, optional): Type of initialization. Defaults to "kmpp".
         max_iter (int, optional): Maximum number of iterations. Defaults to 300.
         tol (float, optional): Tolerance for early stopping. Defaults to 1e-4.
-        sample_weights (Optional[ArrayLike], optional): Sample weights for weighted kmeans. Defaults to None.
+        sample_weights (Optional[list], optional): Sample weights for weighted kmeans. Defaults to None.
 
     Returns:
-        tuple[Optional[list[int]], Optional[ArrayLike]]: Clusters, Centers
+        tuple[Optional[list[int]], Optional[list]]: Clusters, Centers
     """
     if cl is None:
         cl = []
@@ -41,8 +36,8 @@ def cop_kmeans(
         sample_weights = [1] * len(dataset)
 
     # Initialize COP information
-    ml, cl = transitive_closure(ml, cl, len(dataset))
-    ml_info = get_ml_info(ml, dataset, sample_weights)
+    ml_graph, cl_graph = transitive_closure(ml, cl, len(dataset))
+    ml_info = get_ml_info(ml_graph, dataset, sample_weights)
     tol = tolerance(tol, dataset)
 
     # Initialize clusters
@@ -60,10 +55,10 @@ def cop_kmeans(
                 found_cluster = False
                 while (not found_cluster) and counter < len(indices):
                     index = indices[counter]
-                    if not violate_constraints(i, index, clusters_, ml, cl):
+                    if not violate_constraints(i, index, clusters_, ml_graph, cl_graph):
                         found_cluster = True
                         clusters_[i] = index
-                        for j in ml[i]:
+                        for j in ml_graph[i]:
                             clusters_[j] = index
                     counter += 1
 
@@ -90,7 +85,7 @@ def l2_distance(point1, point2):
     return sum([(float(i) - float(j)) ** 2 for (i, j) in zip(point1, point2)])
 
 
-def tolerance(tol: float, dataset: ArrayLike):
+def tolerance(tol: float, dataset: list):
     # n = len(dataset)
     # dim = len(dataset[0])
     # averages = [sum(dataset[i][d] for i in range(n)) / float(n) for d in range(dim)]
@@ -107,9 +102,7 @@ def closest_clusters(centers, datapoint):
     return sorted(range(len(distances)), key=lambda x: distances[x]), distances
 
 
-def initialize_centers(
-    dataset: ArrayLike, k: int, method: str, sample_weights: ArrayLike
-):
+def initialize_centers(dataset: list[list[int]], k: int, method: str, sample_weights: list):
     if method == "random":
         ids = list(range(len(dataset)))
         random.shuffle(ids)
@@ -140,15 +133,15 @@ def initialize_centers(
 def violate_constraints(
     data_index,
     cluster_index,
-    clusters: ArrayLike,
-    ml: List[Tuple[int, int]],
-    cl: List[Tuple[int, int]],
+    clusters: list[int],
+    ml_graph: dict[int,set[int]],
+    cl_graph: dict[int,set[int]],
 ):
-    for i in ml[data_index]:
+    for i in ml_graph[data_index]:
         if clusters[i] != -1 and clusters[i] != cluster_index:
             return True
 
-    for i in cl[data_index]:
+    for i in cl_graph[data_index]:
         if clusters[i] == cluster_index:
             return True
 
@@ -156,7 +149,7 @@ def violate_constraints(
 
 
 def compute_centers(
-    clusters: ArrayLike, dataset: ArrayLike, k: int, ml_info, sample_weights: ArrayLike
+    clusters: list[int], dataset: list[list[int]], k: int, ml_info, sample_weights: list
 ):
     cluster_ids = set(clusters)
     k_new = len(cluster_ids)
@@ -197,22 +190,20 @@ def compute_centers(
     return clusters, centers
 
 
-def get_ml_info(
-    ml: List[Tuple[int, int]], dataset: ArrayLike, sample_weights: ArrayLike
-):
+def get_ml_info(ml_graph: dict[int,set[int]], dataset: list[list[int]], sample_weights: list):
     flags = [True] * len(dataset)
     groups = []
     for i in range(len(dataset)):
         if not flags[i]:
             continue
-        group = list(ml[i] | {i})
+        group = list(ml_graph[i] | {i})
         groups.append(group)
         for j in group:
             flags[j] = False
 
     dim = len(dataset[0])
     scores = [0.0] * len(groups)
-    centroids = [[0.0] * dim for i in range(len(groups))]
+    centroids = [[0.0] * dim for _ in range(len(groups))]
 
     for j, group in enumerate(groups):
         for d in range(dim):
@@ -230,9 +221,11 @@ def get_ml_info(
     return groups, scores, centroids
 
 
-def transitive_closure(ml: List[Tuple[int, int]], cl: List[Tuple[int, int]], n: int):
-    ml_graph = dict()
-    cl_graph = dict()
+def transitive_closure(
+    ml: list[tuple[int, int]], cl: list[tuple[int, int]], n: int
+) -> tuple[dict[int, set[int]], dict[int, set[int]]]:
+    ml_graph : dict[int,set[int]] = dict()
+    cl_graph : dict[int,set[int]] = dict()
     for i in range(n):
         ml_graph[i] = set()
         cl_graph[i] = set()
@@ -241,7 +234,7 @@ def transitive_closure(ml: List[Tuple[int, int]], cl: List[Tuple[int, int]], n: 
         d[i].add(j)
         d[j].add(i)
 
-    for (i, j) in ml:
+    for i, j in ml:
         add_both(ml_graph, i, j)
 
     def dfs(i, graph, visited, component):
@@ -254,13 +247,13 @@ def transitive_closure(ml: List[Tuple[int, int]], cl: List[Tuple[int, int]], n: 
     visited = [False] * n
     for i in range(n):
         if not visited[i]:
-            component = []
+            component : list[int] = []
             dfs(i, ml_graph, visited, component)
             for x1 in component:
                 for x2 in component:
                     if x1 != x2:
                         ml_graph[x1].add(x2)
-    for (i, j) in cl:
+    for i, j in cl:
         add_both(cl_graph, i, j)
         for y in ml_graph[j]:
             add_both(cl_graph, i, y)
