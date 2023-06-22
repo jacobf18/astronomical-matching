@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 from scipy.cluster.hierarchy import linkage, fcluster
 
 from cop_kmeans import cop_kmeans
-import constants
+import astronomical_matching.constants as constants
 
 def chain_breaking(data_df: pd.DataFrame, min_clusters = 1):
     """Single-linkage heuristic (chain-breaking)
