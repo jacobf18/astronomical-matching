@@ -7,7 +7,7 @@ import pandas as pd
 from numpy.typing import ArrayLike
 from tqdm import tqdm
 
-from ..utils import neg_log_bayes
+from .utils import neg_log_bayes
 
 
 def cop_kmeans(

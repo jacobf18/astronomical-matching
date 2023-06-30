@@ -38,7 +38,8 @@ def cop_kmeans(
     if ml is None:
         ml = []
     if sample_weights is None:
-        sample_weights = [1] * len(dataset)
+        # sample_weights = [1] * len(dataset)
+        sample_weights = np.ones(len(dataset))
 
     # Initialize COP information
     ml, cl = transitive_closure(ml, cl, len(dataset))
@@ -76,7 +77,8 @@ def cop_kmeans(
         )
 
         # Check for convergence
-        shift = sum(l2_distance(centers[i], centers_[i]) for i in range(k))
+        # shift = sum(l2_distance(centers[i], centers_[i]) for i in range(k))
+        shift = np.sum(np.linalg.norm(centers - centers_, ord = 2, axis=1))
         if shift <= tol:
             break
 
@@ -88,6 +90,7 @@ def cop_kmeans(
 
 def l2_distance(point1, point2):
     return sum([(float(i) - float(j)) ** 2 for (i, j) in zip(point1, point2)])
+    # return np.sum((point1 - point2) ** 2)
 
 
 def tolerance(tol: float, dataset: ArrayLike):
@@ -103,7 +106,8 @@ def tolerance(tol: float, dataset: ArrayLike):
 
 
 def closest_clusters(centers, datapoint):
-    distances = [l2_distance(center, datapoint) for center in centers]
+    # distances = [l2_distance(center, datapoint) for center in centers]
+    distances = np.linalg.norm(centers - datapoint, ord = 2, axis=1)
     return sorted(range(len(distances)), key=lambda x: distances[x]), distances
 
 
@@ -116,19 +120,21 @@ def initialize_centers(
         return [dataset[i] for i in ids[:k]]
 
     elif method == "kmpp":
-        # chances = [1] * len(dataset)
         chances = sample_weights
-        centers = []
+        dim = len(dataset[0])
+        centers = np.zeros((k,dim))
 
-        for _ in range(k):
-            chances = [x / sum(chances) for x in chances]
+        for i in range(k):
+            # chances = [x / sum(chances) for x in chances]
+            chances = chances / np.sum(chances)
             r = random.random()
             acc = 0.0
             for index, chance in enumerate(chances):
                 if acc + chance >= r:
                     break
                 acc += chance
-            centers.append(dataset[index])
+            # centers.append(dataset[index])
+            centers[i] = dataset[index]
 
             for index, point in enumerate(dataset):
                 cids, distances = closest_clusters(centers, point)
@@ -164,7 +170,8 @@ def compute_centers(
     clusters = [id_map[x] for x in clusters]
 
     dim = len(dataset[0])
-    centers = [[0.0] * dim for i in range(k)]
+    # centers = [[0.0] * dim for i in range(k)]
+    centers = np.zeros((k,dim))
 
     counts = [0] * k_new
     for j, c in enumerate(clusters):
@@ -275,3 +282,17 @@ def transitive_closure(ml: List[Tuple[int, int]], cl: List[Tuple[int, int]], n: 
                 raise Exception("inconsistent constraints between %d and %d" % (i, j))
 
     return ml_graph, cl_graph
+
+
+import cProfile
+if __name__ == "__main__":
+    # Run test of cop-kmeans
+
+    dataset = np.random.randint(0, 1000, (1000, 2))
+    # ml = [(0, 1), (2, 3), (4, 5), (6, 7)]
+    # cl = [(0, 2), (4, 6)]
+
+    with cProfile.Profile() as pr:
+        clusters, centers = cop_kmeans(dataset, 20, None, None)
+
+        pr.dump_stats('cop2.prof')

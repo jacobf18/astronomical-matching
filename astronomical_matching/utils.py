@@ -5,6 +5,25 @@ import pandas as pd
 
 from .constants import ARCSEC_TO_RAD_2
 
+from functools import lru_cache
+import math
+
+@lru_cache
+def sterling2(n, k):
+    """
+    Sterling number of the second kind. 
+    See https://en.wikipedia.org/wiki/Stirling_numbers_of_the_second_kind.
+    """
+    if n == k == 0:
+        return 1
+    if (n > 0 and k == 0) or (n == 0 and k > 0):
+        return 0
+    if n == k:
+        return 1
+    if k > n:
+        return 0
+    return k * sterling2(n - 1, k) + sterling2(n - 1, k - 1)
+
 
 def neg_log_bayes(data_df: pd.DataFrame, labels: Union[list[int], np.ndarray]) -> float:
     """Calculate negative log bayes factor using the given labels.
@@ -68,9 +87,10 @@ def neg_log_bayes(data_df: pd.DataFrame, labels: Union[list[int], np.ndarray]) -
             - sum_ln_kappa_rad
             + double_sum
             + ln_sum_kappa_rad
+            + math.log(sterling2(int(data_df.shape[0]), int(max(labels) + 1)))
         )
 
     # Remove the label column
     del data_df["labels"]
 
-    return out
+    return out 

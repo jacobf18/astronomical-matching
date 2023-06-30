@@ -6,7 +6,7 @@ import pandas as pd
 from gurobipy import GRB, Model, quicksum
 from scipy.spatial.distance import pdist
 
-from ..constants import ARCSEC_TO_RAD_2
+from .constants import ARCSEC_TO_RAD_2
 from .miqcp import find_max_clusters
 
 

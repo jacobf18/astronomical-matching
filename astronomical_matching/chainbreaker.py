@@ -1,7 +1,7 @@
 import pandas as pd
 from scipy.cluster.hierarchy import fcluster, linkage
 
-from ..utils import neg_log_bayes
+from .utils import neg_log_bayes
 
 
 def chain_breaking(data_df: pd.DataFrame):

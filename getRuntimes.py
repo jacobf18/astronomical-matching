@@ -2,20 +2,11 @@ from math import log
 import numpy as np
 import gurobipy as gp
 import matplotlib.pyplot as plt
-from matching import neg_log_bayes, miqcp
+from astronomical_matching.utils import neg_log_bayes
+from astronomical_matching.miqcp import miqcp, setup_miqcp_model
+from astronomical_matching.cop_kmeans import run_cop_kmeans
 import pandas as pd
 import time
-from matching import (
-    run_cop_kmeans, 
-    run_kmeans, 
-    setup_dirilp, 
-    dirilp, 
-    find_max_clusters, 
-    setup_miqcp_model, 
-    neg_log_bayes,
-    plot_lined,
-    chain_breaking
-    )
 import itertools
 from functools import partial
 from typing import Union
@@ -122,7 +113,7 @@ def log_runtimes(filename: str,
             df = simulate_two_objects(sigma1 = s1, sigma2 = s2, distance=d, num=n, seed = seed)
             if seed == 0: # check license
                 _ = setup_miqcp_model(df, 2, 0, False)
-            miqcp_time = time_method(df, run_cop_kmeans, repeat = 1)
+            miqcp_time = time_method(df, miqcp, repeat = 1)
             # dirilp_time = time_method(df, setup_dirilp, repeat = 1)
             dirilp_time = [1000000000]
             pd_dict["miqcp runtime"].append(miqcp_time[0])
@@ -133,4 +124,4 @@ def log_runtimes(filename: str,
 
 
 if __name__ == "__main__":
-    log_runtimes("runtime-copkmeans.csv", 0.13, [10,20,30,40,50,60,70,80,90,100], 0.04, 0.04, 5)
+    log_runtimes("runtime-miqcp-sterling.csv", 0.13, [10,20,30], 0.04, 0.04, 1)

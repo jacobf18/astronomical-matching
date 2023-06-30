@@ -4,8 +4,12 @@ import itertools
 import pandas as pd
 from scipy.spatial.distance import pdist
 from collections import defaultdict
+import math
 
-from ..constants import ARCSEC_TO_RAD_2
+from .constants import ARCSEC_TO_RAD_2
+from .utils import sterling2
+from .cop_kmeans import run_cop_kmeans
+
 
 def setup_miqcp_model(data_df, max_clusters = -1, min_clusters = 0, verbose = False):
     num_datapoints = data_df.shape[0]
@@ -15,7 +19,7 @@ def setup_miqcp_model(data_df, max_clusters = -1, min_clusters = 0, verbose = Fa
     num_catalogs = data_df["ImageID"].unique().shape[0]
     dims = 2
 
-    C = np.log(ARCSEC_TO_RAD_2) # constant used for arcseconds to radians conversion
+    C = math.log(ARCSEC_TO_RAD_2) # constant used for arcseconds to radians conversion
 
     model = Model("MIQCP")
     if not verbose:
@@ -44,7 +48,7 @@ def setup_miqcp_model(data_df, max_clusters = -1, min_clusters = 0, verbose = Fa
     for (source, catalog, k), var in x.items():
         var.setAttr("BranchPriority", 1)
 
-    # cluster distances
+    # Number of clusters
     p = model.addVars(num_clusters, lb = 0, vtype=GRB.BINARY)
 
     # Add M variable
@@ -78,6 +82,10 @@ def setup_miqcp_model(data_df, max_clusters = -1, min_clusters = 0, verbose = Fa
 
     s = model.addVars(num_clusters, lb = 0, vtype=GRB.INTEGER)
 
+    # Add Sterling number variables
+    sterling_vars = model.addVars(range(1,num_clusters + 1), lb = 0)
+    z = model.addVars(range(1,num_clusters + 1), lb = 0, vtype=GRB.BINARY)
+
     ### Objective ###
     sum_ln_kappa_rad = (C * num_datapoints) + np.log(data_df["kappa"]).sum()
     model.setObjective((0.5 * r_dict.sum()) 
@@ -89,6 +97,7 @@ def setup_miqcp_model(data_df, max_clusters = -1, min_clusters = 0, verbose = Fa
                                     for j in range(num_clusters))
                         + (p.sum() * C)
                         - sum_ln_kappa_rad
+                        + sterling_vars.sum()
                         , GRB.MINIMIZE)
 
     ### Constraints
@@ -105,7 +114,7 @@ def setup_miqcp_model(data_df, max_clusters = -1, min_clusters = 0, verbose = Fa
 
     # lower bound on objects for getting a maximum object count
     model.addConstr(p.sum() >= min_clusters)
-            
+    
     # |# sources| * ln(2)
     for j in range(num_clusters):
         model.addConstr(s[j] == quicksum(x[source,catalog,j] for source,catalog in candidate_list))
@@ -140,6 +149,18 @@ def setup_miqcp_model(data_df, max_clusters = -1, min_clusters = 0, verbose = Fa
                                 <= 
                                 r_dict[(source, catalog)] + (M * (1 - x[(source, catalog, j)])))
 
+    # Sterling number vars
+    M2 = math.log(sterling2(num_datapoints, num_clusters)) * 2
+
+    model.addConstr(z.sum() == 1)
+
+    for j in range(1,num_clusters+1):
+        model.addConstr(p.sum() <= j*z[j] + num_clusters*(1-z[j]))
+        model.addConstr(p.sum() >= j*z[j])
+
+        model.addConstr(sterling_vars[j] - math.log(sterling2(num_datapoints, j)) <= M2 * (1-z[j]))
+        model.addConstr(sterling_vars[j] - math.log(sterling2(num_datapoints, j)) >= -M2 * (1-z[j]))
+
     # Definition of variables chi
     # Equation B19
     for j in range(num_clusters):
@@ -162,6 +183,7 @@ def setup_miqcp_model(data_df, max_clusters = -1, min_clusters = 0, verbose = Fa
 
     return model, x
 
+
 def find_max_clusters(data_df) -> int:
     """Find the maximum number of clusters by bounding and relaxing the model and comparing
     the best possible bounded bayes factor to the feasible point returned by constrained
@@ -173,7 +195,7 @@ def find_max_clusters(data_df) -> int:
     Returns:
         int: maximum number of clusters
     """
-    _, _, cop_kmeans_bayes = run_cop_kmeans(data_df, min_k=1,max_k = data_df.shape[0])
+    _, _, cop_kmeans_bayes = run_cop_kmeans(data_df, min_k=1, max_k = data_df.shape[0])
     max_cluster = 0
     for c in range(data_df.shape[0]):
         model,_ = setup_miqcp_model(data_df, max_clusters = -1, min_clusters=c)
@@ -219,4 +241,3 @@ def miqcp(data_df: pd.DataFrame,
     assert len(labels) == data_df.shape[0] # sanity check that every point is assigned a label
     
     return pd.factorize(labels)[0] # factorize sets labels from 0 to max_labels
-

@@ -4,7 +4,7 @@ import pandas as pd
 from sklearn.cluster import KMeans
 from tqdm import tqdm
 
-from ..utils import neg_log_bayes
+from .utils import neg_log_bayes
 
 
 def run_kmeans(

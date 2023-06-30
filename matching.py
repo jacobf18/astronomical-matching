@@ -424,7 +424,7 @@ def setup_miqcp_model(data_df, max_clusters = -1, min_clusters = 0, verbose = Fa
 
     return model, x
 
-def find_max_clusters(data_df) -> int:
+def find_max_clusters(data_df: pd.DataFrame, feasible_bayes: float) -> int:
     """Find the maximum number of clusters by bounding and relaxing the model and comparing
     the best possible bounded bayes factor to the feasible point returned by constrained
     kmeans.
@@ -435,7 +435,6 @@ def find_max_clusters(data_df) -> int:
     Returns:
         int: maximum number of clusters
     """
-    _, _, cop_kmeans_bayes = run_cop_kmeans(data_df, min_k=1,max_k = data_df.shape[0])
     max_cluster = 0
     for c in range(data_df.shape[0]):
         model,_ = setup_miqcp_model(data_df, max_clusters = -1, min_clusters=c)
@@ -448,16 +447,17 @@ def find_max_clusters(data_df) -> int:
 
         model.optimize()
         max_cluster = c - 1
-        if model.ObjVal > cop_kmeans_bayes:
+        if model.ObjVal > feasible_bayes:
             break
     return max_cluster
 
 def miqcp(data_df: pd.DataFrame,
           verbose = False, 
           preDual = False, 
-          preQLinearize = False):
+          preQLinearize = False,
+          feasible_bayes = float('inf')):
     
-    max_clusters = find_max_clusters(data_df)
+    max_clusters = find_max_clusters(data_df, feasible_bayes)
     # max_clusters = 2
     if verbose:
         print(f"Max Clusters using COP-KMeans: {max_clusters}")
