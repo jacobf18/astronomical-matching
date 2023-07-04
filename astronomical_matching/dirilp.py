@@ -3,20 +3,24 @@ from collections import defaultdict
 
 import numpy as np
 import pandas as pd
-from gurobipy import GRB, Model, quicksum
-from scipy.spatial.distance import pdist
+from gurobipy import GRB, Model, quicksum  # type: ignore
+from scipy.spatial.distance import pdist  # type: ignore
 
 from .constants import ARCSEC_TO_RAD_2
 from .miqcp import find_max_clusters
 
 
-def setup_dirilp(data_df: pd.DataFrame, max_clusters=-1, min_clusters=0, verbose=False):
+def setup_dirilp(
+    data_df: pd.DataFrame, max_clusters=-1, min_clusters=0, verbose=False
+):
     """Setup DirILP model.
 
     Args:
         data_df (pd.DataFrame): dataframe with coordinates and uncertainties
-        max_clusters (int, optional): maximum number of clusters. Defaults to -1.
-        min_clusters (int, optional): minimum number of clusters. Defaults to 0.
+        max_clusters (int, optional): maximum number of clusters.
+            Defaults to -1.
+        min_clusters (int, optional): minimum number of clusters.
+            Defaults to 0.
         verbose (bool, optional): print out option. Defaults to False.
 
     Returns:
@@ -60,9 +64,9 @@ def setup_dirilp(data_df: pd.DataFrame, max_clusters=-1, min_clusters=0, verbose
         / (4 * 1 / sigma_max**2)
     )
     M_2 = num_catalog * max(kappa_dict.values())
-    rounding_index = (
-        -1
-    )  # round number to nearest 10 if rounding_index = -1. to round to nearest 100, change to -2
+    # round number to nearest 10 if rounding_index = -1.
+    # to round to nearest 100, change to -2
+    rounding_index = -1
     error_threshold = 1 / 100 * min(kappa_dict.values())
 
     t_list = []
@@ -114,7 +118,9 @@ def setup_dirilp(data_df: pd.DataFrame, max_clusters=-1, min_clusters=0, verbose
     for subset_index in range(num_clusters):
         p_list.append(
             mo.addVar(
-                lb=-GRB.INFINITY, vtype=GRB.CONTINUOUS, name=str(("p", subset_index))
+                lb=-GRB.INFINITY,
+                vtype=GRB.CONTINUOUS,
+                name=str(("p", subset_index)),
             )
         )
 
@@ -150,7 +156,8 @@ def setup_dirilp(data_df: pd.DataFrame, max_clusters=-1, min_clusters=0, verbose
     # Each point assigned to a cluster
     for source, catalog in candidate_list:
         mo.addConstr(
-            quicksum(x_dict[j, source, catalog] for j in range(num_clusters)) == 1
+            quicksum(x_dict[j, source, catalog] for j in range(num_clusters))
+            == 1
         )
 
     # |# objects|
@@ -172,7 +179,8 @@ def setup_dirilp(data_df: pd.DataFrame, max_clusters=-1, min_clusters=0, verbose
 
     for j, c in itertools.product(range(num_clusters), range(num_catalog)):
         mo.addConstr(
-            quicksum(x_dict[j, source, c] for source in sources_by_catalog[c]) <= 1
+            quicksum(x_dict[j, source, c] for source in sources_by_catalog[c])
+            <= 1
         )
 
     # Definition of variables y
@@ -202,7 +210,9 @@ def setup_dirilp(data_df: pd.DataFrame, max_clusters=-1, min_clusters=0, verbose
         for catalog_index in range(num_catalog + 1):
             z_constraint.append(z_dict[subset_index, catalog_index])
         mo.addConstr(
-            lhs=quicksum(variable for variable in z_constraint), sense=GRB.EQUAL, rhs=1
+            lhs=quicksum(variable for variable in z_constraint),
+            sense=GRB.EQUAL,
+            rhs=1,
         )
 
     # Only 1 of u^o_k is 1
@@ -212,7 +222,9 @@ def setup_dirilp(data_df: pd.DataFrame, max_clusters=-1, min_clusters=0, verbose
         for gridpoint_index in range(len(c_list)):
             u_constraint.append(u_dict[subset_index, gridpoint_index])
         mo.addConstr(
-            lhs=quicksum(variable for variable in u_constraint), sense=GRB.EQUAL, rhs=1
+            lhs=quicksum(variable for variable in u_constraint),
+            sense=GRB.EQUAL,
+            rhs=1,
         )
 
     # Definition of variables chi
@@ -241,11 +253,13 @@ def setup_dirilp(data_df: pd.DataFrame, max_clusters=-1, min_clusters=0, verbose
         for breakpoint_index in range(num_breakpoints):
             chi_constraint.append(chi_dict[subset_index, breakpoint_index])
         for chi_index in range(len(chi_constraint) - 1):
-            mo.addConstr(chi_constraint[chi_index] >= chi_constraint[chi_index + 1])
+            mo.addConstr(
+                chi_constraint[chi_index] >= chi_constraint[chi_index + 1]
+            )
 
     # Definition of variables t
     # Equation B20
-    product_of_cat_source_pairs_list = [
+    prod_cat_sources = [
         prod
         for prod in list(itertools.combinations(candidate_list, r=2))
         if prod[0][1] != prod[1][1]
@@ -255,7 +269,8 @@ def setup_dirilp(data_df: pd.DataFrame, max_clusters=-1, min_clusters=0, verbose
 
     def get_distance_2(list_of_indexes, coord_dict):
         """
-        Given 2 pairs of (source_index, catalog_index), return the square distance between them
+        Given 2 pairs of (source_index, catalog_index),
+            return the square distance between them
         df has the columns ('Catalog id', 'Source id', Coord 1, Coord 2)
         """
         c1 = coord_dict[list_of_indexes[0]]
@@ -263,7 +278,7 @@ def setup_dirilp(data_df: pd.DataFrame, max_clusters=-1, min_clusters=0, verbose
 
         return ((c1[0] - c2[0]) ** 2) + ((c1[1] - c2[1]) ** 2)
 
-    for p_tups in product_of_cat_source_pairs_list:
+    for p_tups in prod_cat_sources:
         weighted_dist_dict[p_tups] = (
             kappa_dict[p_tups[0]]
             * kappa_dict[p_tups[1]]
@@ -273,25 +288,26 @@ def setup_dirilp(data_df: pd.DataFrame, max_clusters=-1, min_clusters=0, verbose
     for subset_index in range(num_clusters):
         for gridpoint_index in range(1, len(c_list)):
             mo.addConstr(
-                lhs=t_list[subset_index],
-                sense=GRB.GREATER_EQUAL,
-                rhs=-M * (1 - u_dict[subset_index, gridpoint_index])
-                + (
-                    1
-                    / (2 * c_list[gridpoint_index])
-                    * quicksum(
-                        var_y_dict[
-                            (
-                                "y",
-                                subset_index,
-                                product_of_catalog_source_pairs[0],
-                                product_of_catalog_source_pairs[1],
-                            )
-                        ]
-                        * weighted_dist_dict[product_of_catalog_source_pairs]
-                        for product_of_catalog_source_pairs in product_of_cat_source_pairs_list
+                t_list[subset_index]
+                >= (
+                    -M * (1 - u_dict[subset_index, gridpoint_index])
+                    + (
+                        1
+                        / (2 * c_list[gridpoint_index])
+                        * quicksum(
+                            var_y_dict[
+                                (
+                                    "y",
+                                    subset_index,
+                                    prods[0],
+                                    prods[1],
+                                )
+                            ]
+                            * weighted_dist_dict[prods]
+                            for prods in prod_cat_sources
+                        )
                     )
-                ),
+                )
             )
 
     # Definition of variables z
@@ -319,19 +335,22 @@ def setup_dirilp(data_df: pd.DataFrame, max_clusters=-1, min_clusters=0, verbose
         x_constraint = []
         for s, c in candidate_list:
             x_constraint.append(
-                x_dict[subset_index, s, c] * round(kappa_dict[s, c], rounding_index)
+                x_dict[subset_index, s, c]
+                * round(kappa_dict[s, c], rounding_index)
             )
         for gridpoint_index in range(len(c_list)):
             mo.addConstr(
                 lhs=quicksum(variable for variable in x_constraint),
                 sense=GRB.LESS_EQUAL,
-                rhs=c_list[gridpoint_index] * u_dict[subset_index, gridpoint_index]
+                rhs=c_list[gridpoint_index]
+                * u_dict[subset_index, gridpoint_index]
                 + M_2 * (1 - u_dict[subset_index, gridpoint_index]),
             )
             mo.addConstr(
                 lhs=quicksum(variable for variable in x_constraint),
                 sense=GRB.GREATER_EQUAL,
-                rhs=c_list[gridpoint_index] * u_dict[subset_index, gridpoint_index],
+                rhs=c_list[gridpoint_index]
+                * u_dict[subset_index, gridpoint_index],
             )
 
     # Definition of variables p
@@ -371,7 +390,7 @@ def dirilp(data_df: pd.DataFrame, verbose=False):
 
     # uses quadratic formulation because it is faster to setup
     max_clusters = find_max_clusters(data_df)
-    
+
     if verbose:
         print(f"Max Clusters using COP-KMeans: {max_clusters}")
 
@@ -389,4 +408,5 @@ def dirilp(data_df: pd.DataFrame, verbose=False):
         len(labels) == data_df.shape[0]
     )  # sanity check that every point is assigned a label
 
-    return pd.factorize(labels)[0]  # factorize sets labels from 0 to max_labels
+    # factorize sets labels from 0 to max_labels
+    return pd.factorize(labels)[0]

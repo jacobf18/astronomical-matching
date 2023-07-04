@@ -1,5 +1,5 @@
 import pandas as pd
-from scipy.cluster.hierarchy import fcluster, linkage
+from scipy.cluster.hierarchy import fcluster, linkage  # type: ignore
 
 from .utils import neg_log_bayes
 

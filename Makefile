@@ -4,7 +4,7 @@ clean-pyc:
 flake:
 	@if command -v flake8 > /dev/null; then \
 		echo "Running flake8"; \
-		flake8 --count mne_icalabel examples; \
+		flake8 --count astronomical_matching; \
 	else \
 		echo "flake8 not found, please install it!"; \
 		exit 1; \
@@ -14,7 +14,7 @@ flake:
 black:
 	@if command -v black > /dev/null; then \
 		echo "Running black"; \
-		black mne_icalabel examples; \
+		black --line-length 80 astronomical_matching; \
 	else \
 		echo "black not found, please install it!"; \
 		exit 1; \
@@ -23,12 +23,12 @@ black:
 
 pydocstyle:
 	@echo "Running pydocstyle"
-	@pydocstyle mne_icalabel
+	@pydocstyle astronomical_matching
 
 isort:
 	@if command -v isort > /dev/null; then \
 		echo "Running isort"; \
-		isort mne_icalabel examples doc; \
+		isort astronomical_matching; \
 	else \
 		echo "isort not found, please install it!"; \
 		exit 1; \
@@ -36,8 +36,8 @@ isort:
 	@echo "isort passed"
 
 style:
-	isort astronomical_matching
-	black astronomical_matching
-	flake8 astronomical_matching
+	@$(MAKE) isort
+	@$(MAKE) black
+	@$(MAKE) flake
 	mypy ./astronomical_matching
 	@$(MAKE) pydocstyle
