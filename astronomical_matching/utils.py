@@ -9,9 +9,9 @@ from .constants import ARCSEC_TO_RAD_2
 
 
 @lru_cache
-def sterling2(n, k):
+def stirling2(n, k):
     """
-    Sterling number of the second kind.
+    Stirling number of the second kind.
     See https://en.wikipedia.org/wiki/Stirling_numbers_of_the_second_kind.
     """
     if n == k == 0:
@@ -22,7 +22,7 @@ def sterling2(n, k):
         return 1
     if k > n:
         return 0
-    return k * sterling2(n - 1, k) + sterling2(n - 1, k - 1)
+    return k * stirling2(n - 1, k) + stirling2(n - 1, k - 1)
 
 
 def neg_log_bayes(
@@ -89,7 +89,7 @@ def neg_log_bayes(
             - sum_ln_kappa_rad
             + double_sum
             + ln_sum_kappa_rad
-            + math.log(sterling2(int(data_df.shape[0]), int(max(labels) + 1)))
+            + math.log(stirling2(int(data_df.shape[0]), int(max(labels) + 1)))
         )
 
     # Remove the label column
