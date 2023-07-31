@@ -9,7 +9,7 @@ from scipy.spatial.distance import pdist  # type: ignore
 
 from .constants import ARCSEC_TO_RAD_2
 from .cop_kmeans import run_cop_kmeans
-from .utils import sterling2
+from .utils import stirling2
 
 
 def setup_miqcp_model(data_df, max_clusters=-1, min_clusters=0, verbose=False):
