@@ -10,3 +10,5 @@
 **/big_data/*
 **/*.svg
 **/*.egg-info/
+
+dist/
