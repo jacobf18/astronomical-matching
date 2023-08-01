@@ -108,7 +108,9 @@ def setup_dirilp(
     # Variables for t
     for subset_index in range(num_clusters):
         t_list.append(
-            mo.addVar(lb=0, vtype=GRB.CONTINUOUS, name=str(("t", subset_index)))
+            mo.addVar(lb=0,
+                      vtype=GRB.CONTINUOUS,
+                      name=str(("t", subset_index)))
         )
 
     # Variables for u

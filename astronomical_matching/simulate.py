@@ -23,17 +23,21 @@ def simulate_objects_on_circle(sigma: float = 0.04,
         sources.append(np.random.multivariate_normal(coords[i],
                                                      np.eye(2) * (sigma**2),
                                                      (num_sources)))
-        objectIDs[i * num_sources:(i + 1) * num_sources] = [i] * num_sources
-        imageIDs[i * num_sources:(i + 1) * num_sources] = list(range(num_sources))
+        start_ind = i * num_sources
+        end_ind = (i + 1) * num_sources
+        objectIDs[start_ind:end_ind] = [i] * num_sources
+        imageIDs[start_ind:end_ind] = list(range(num_sources))
 
     coords = np.vstack(sources)
 
     sigmas = [sigma] * (num_objects * num_sources)
 
-    df_dict = {"ImageID": imageIDs,
-               "Sigma": sigmas,
-                "coord1 (arcseconds)": coords.T[0],
-                "coord2 (arcseconds)": coords.T[1]}
+    df_dict = {
+        "ImageID": imageIDs,
+        "Sigma": sigmas,
+        "coord1 (arcseconds)": coords.T[0],
+        "coord2 (arcseconds)": coords.T[1]
+    }
     df = pd.DataFrame(df_dict)
     df["kappa"] = df["Sigma"] ** (-2)
     df["SourceID"] = df.index

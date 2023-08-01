@@ -154,7 +154,8 @@ def setup_miqcp_model(data_df, max_clusters=-1, min_clusters=0, verbose=False):
 
     for j, c in itertools.product(range(num_clusters), range(num_catalogs)):
         model.addConstr(
-            quicksum(x[(source, c, j)] for source in sources_by_catalog[c]) <= 1
+            quicksum(x[(source, c, j)]
+                     for source in sources_by_catalog[c]) <= 1
         )
 
     # Min and max for cluster variables
@@ -192,7 +193,7 @@ def setup_miqcp_model(data_df, max_clusters=-1, min_clusters=0, verbose=False):
             )
 
     # Sterling number vars
-    M2 = math.log(sterling2(num_datapoints, num_clusters)) * 2
+    M2 = math.log(stirling2(num_datapoints, num_clusters)) * 2
 
     model.addConstr(z.sum() == 1)
 
@@ -201,11 +202,11 @@ def setup_miqcp_model(data_df, max_clusters=-1, min_clusters=0, verbose=False):
         model.addConstr(p.sum() >= j * z[j])
 
         model.addConstr(
-            sterling_vars[j] - math.log(sterling2(num_datapoints, j))
+            sterling_vars[j] - math.log(stirling2(num_datapoints, j))
             <= M2 * (1 - z[j])
         )
         model.addConstr(
-            sterling_vars[j] - math.log(sterling2(num_datapoints, j))
+            sterling_vars[j] - math.log(stirling2(num_datapoints, j))
             >= -M2 * (1 - z[j])
         )
 
