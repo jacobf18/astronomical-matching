@@ -10,6 +10,8 @@ from scipy.spatial.distance import pdist  # type: ignore
 from .constants import ARCSEC_TO_RAD_2
 from .cop_kmeans import run_cop_kmeans
 from .utils import stirling2
+from typing import Union
+from tqdm import tqdm
 
 
 def setup_miqcp_model(data_df, max_clusters=-1, min_clusters=0, verbose=False):
@@ -95,7 +97,7 @@ def setup_miqcp_model(data_df, max_clusters=-1, min_clusters=0, verbose=False):
     s = model.addVars(num_clusters, lb=0, vtype=GRB.INTEGER)
 
     # Add Sterling number variables
-    sterling_vars = model.addVars(range(1, num_clusters + 1), lb=0)
+    # sterling_vars = model.addVars(range(1, num_clusters + 1), lb=0)
     z = model.addVars(range(1, num_clusters + 1), lb=0, vtype=GRB.BINARY)
 
     # Objective #
@@ -116,8 +118,8 @@ def setup_miqcp_model(data_df, max_clusters=-1, min_clusters=0, verbose=False):
             for j in range(num_clusters)
         )
         + (p.sum() * C)
-        - sum_ln_kappa_rad
-        + sterling_vars.sum(),
+        - sum_ln_kappa_rad,
+        # + sterling_vars.sum(),
         GRB.MINIMIZE,
     )
 
@@ -193,7 +195,7 @@ def setup_miqcp_model(data_df, max_clusters=-1, min_clusters=0, verbose=False):
             )
 
     # Sterling number vars
-    M2 = math.log(stirling2(num_datapoints, num_clusters)) * 2
+    # M2 = math.log(stirling2(num_datapoints, num_clusters)) * 2
 
     model.addConstr(z.sum() == 1)
 
@@ -201,14 +203,14 @@ def setup_miqcp_model(data_df, max_clusters=-1, min_clusters=0, verbose=False):
         model.addConstr(p.sum() <= j * z[j] + num_clusters * (1 - z[j]))
         model.addConstr(p.sum() >= j * z[j])
 
-        model.addConstr(
-            sterling_vars[j] - math.log(stirling2(num_datapoints, j))
-            <= M2 * (1 - z[j])
-        )
-        model.addConstr(
-            sterling_vars[j] - math.log(stirling2(num_datapoints, j))
-            >= -M2 * (1 - z[j])
-        )
+        # model.addConstr(
+        #     sterling_vars[j] - math.log(stirling2(num_datapoints, j))
+        #     <= M2 * (1 - z[j])
+        # )
+        # model.addConstr(
+        #     sterling_vars[j] - math.log(stirling2(num_datapoints, j))
+        #     >= -M2 * (1 - z[j])
+        # )
 
     # Definition of variables chi
     # Equation B19
@@ -247,7 +249,7 @@ def setup_miqcp_model(data_df, max_clusters=-1, min_clusters=0, verbose=False):
     return model, x
 
 
-def find_max_clusters(data_df) -> int:
+def find_max_clusters(data_df, verbose=False) -> int:
     """Find the maximum number of clusters by bounding
     and relaxing the model and comparing
     the best possible bounded bayes factor to the
@@ -264,7 +266,10 @@ def find_max_clusters(data_df) -> int:
         data_df, min_k=1, max_k=data_df.shape[0]
     )
     max_cluster = 0
-    for c in range(data_df.shape[0]):
+    loop: Union[range, tqdm] = range(data_df.shape[0])
+    if verbose:
+        loop = tqdm(range(data_df.shape[0]))
+    for c in loop:
         model, _ = setup_miqcp_model(data_df, max_clusters=-1, min_clusters=c)
 
         model.update()
@@ -275,6 +280,7 @@ def find_max_clusters(data_df) -> int:
 
         model.optimize()
         max_cluster = c - 1
+        print(model.ObjVal, cop_kmeans_bayes)
         if model.ObjVal > cop_kmeans_bayes:
             break
     return max_cluster
@@ -283,7 +289,7 @@ def find_max_clusters(data_df) -> int:
 def miqcp(
     data_df: pd.DataFrame, verbose=False, preDual=False, preQLinearize=False
 ):
-    max_clusters = find_max_clusters(data_df)
+    max_clusters = find_max_clusters(data_df=data_df, verbose=verbose)
     # max_clusters = 2
     if verbose:
         print(f"Max Clusters using COP-KMeans: {max_clusters}")

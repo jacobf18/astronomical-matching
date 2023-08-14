@@ -89,10 +89,84 @@ def neg_log_bayes(
             - sum_ln_kappa_rad
             + double_sum
             + ln_sum_kappa_rad
-            + math.log(stirling2(int(data_df.shape[0]), int(max(labels) + 1)))
+            # + math.log(stirling2(int(data_df.shape[0]), int(max(labels) + 1)))
         )
 
     # Remove the label column
     del data_df["labels"]
 
     return out
+
+
+def tangent(ra: float, dec: float) -> tuple[np.ndarray, np.ndarray]:
+    """Returns the tangent vectors pointing to west and north.
+
+    Args:
+        ra (float): right ascension in degrees
+        dec (float): declination in degrees
+
+    Returns:
+        tuple[float,float]: west and north vectors
+    """
+    # Convert to radians
+    ra = np.radians(ra)
+    dec = np.radians(dec)
+
+    # Get sin and cos of ra and dec
+    sinRa = np.sin(ra)
+    cosRa = np.cos(ra)
+    sinDec = np.sin(dec)
+    cosDec = np.cos(dec)
+
+    # Get tangent vectors
+    west = np.array([sinRa, -cosRa, 0])
+    north = np.array([-sinDec * cosRa, -sinDec * sinRa, cosDec])
+    return west, north
+
+
+def load_data(file_path: str) -> pd.DataFrame:
+    """ Load the data into a pandas dataframe
+    from a query that looks like this:
+
+    select (m.MatchID, m.Level, m.SubID, s.ImageID,
+            l.SourceID, l.X, l.Y, l.Z, s.Sigma, s.RA, s.Dec)
+    from HSCv3.xrun.Matches m
+            join (HSCv3.xrun.MatchLinks l on l.MatchID=m.MatchID and
+                  l.Level=m.Level and
+                  l.JobID=m.JobID and
+                  l.SubID=m.SubID)
+            join HSCv3.whl.Sources s on s.SourceID=l.SourceID
+    where m.JobID=______ and m.MatchID=__________ -- user input
+            and m.Level=m.BestLevel -- for best results
+    order by m.MatchID, m.SubID, s.ImageID, s.SourceID
+
+    Args:
+        file_path (str): path to match csv file
+
+    Returns:
+        pd.DataFrame: dataframe with columns from SQL query
+    """
+    data_df = pd.read_csv(file_path)
+
+    # Convert Image IDs to integers in range [0, number of images]
+    data_df.ImageID = pd.factorize(data_df.ImageID)[0]
+    data_df.SourceID = pd.factorize(data_df.SourceID)[0]
+
+    # Get kappas (inverse of sigma)
+    data_df["Sigma"] = data_df["Sigma"] / np.sqrt(2.3)
+    data_df["kappa"] = 1 / (data_df["Sigma"] ** 2)
+    data_df["kappa (radians)"] = 1 / ((data_df["Sigma"]*np.pi/180/3600) ** 2)
+    data_df["log kappa (radians)"] = np.log(data_df["kappa (radians)"])
+
+    # Get center of data points
+    center_ra = data_df.RA.mean()
+    center_dec = data_df.Dec.mean()
+
+    center_west, center_north = tangent(center_ra, center_dec)
+
+    data_df["coord1 (arcseconds)"] = ((data_df[["X", "Y", "Z"]] @ center_west)
+                                      * 180 * 3600 / np.pi)
+    data_df["coord2 (arcseconds)"] = ((data_df[["X", "Y", "Z"]] @ center_north)
+                                      * 180 * 3600 / np.pi)
+
+    return data_df

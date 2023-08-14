@@ -391,7 +391,7 @@ def dirilp(data_df: pd.DataFrame, verbose=False):
     """
 
     # uses quadratic formulation because it is faster to setup
-    max_clusters = find_max_clusters(data_df)
+    max_clusters = find_max_clusters(data_df=data_df, verbose=verbose)
 
     if verbose:
         print(f"Max Clusters using COP-KMeans: {max_clusters}")
