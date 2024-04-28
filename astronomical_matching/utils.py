@@ -67,9 +67,6 @@ def neg_log_bayes(
         num_sources = data_labeled.shape[0]
 
         # Get kappa sums
-        # sum_ln_kappa_rad = data_labeled["log kappa (radians)"].sum()
-        # ln_sum_kappa_rad = np.log(data_labeled["kappa (radians)"].sum())
-
         C = np.log(ARCSEC_TO_RAD_2)
         ln_sum_kappa_rad = C + np.log(weights_sum)
         sum_ln_kappa_rad = (C * num_sources) + np.log(weights).sum()
@@ -89,7 +86,7 @@ def neg_log_bayes(
             - sum_ln_kappa_rad
             + double_sum
             + ln_sum_kappa_rad
-            # + math.log(stirling2(int(data_df.shape[0]), int(max(labels) + 1)))
+            + math.log(stirling2(int(data_df.shape[0]), int(max(labels) + 1)))
         )
 
     # Remove the label column

@@ -8,7 +8,7 @@ from .utils import neg_log_bayes
 
 
 def run_kmeans(
-    data_df: pd.DataFrame, min_k: int, max_k: int, verbose=False
+    data_df: pd.DataFrame, min_k: int, max_k: int = None, verbose=False
 ) -> tuple[list[int], int, float]:
     coords = data_df[["coord1 (arcseconds)", "coord2 (arcseconds)"]]
     weights = data_df["kappa"]
@@ -17,8 +17,11 @@ def run_kmeans(
     best_k = 0
     best_bayes = float("inf")
 
+    if max_k is None:
+        max_k = data_df.shape[0]
+    
     loop: Union[range, tqdm] = range(min_k, max_k)
-    max_k = data_df.shape[0]
+    
     if verbose:
         loop = tqdm(range(min_k, max_k))
     for k in loop:

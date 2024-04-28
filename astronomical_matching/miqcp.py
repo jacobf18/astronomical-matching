@@ -97,7 +97,7 @@ def setup_miqcp_model(data_df, max_clusters=-1, min_clusters=0, verbose=False):
     s = model.addVars(num_clusters, lb=0, vtype=GRB.INTEGER)
 
     # Add Sterling number variables
-    # sterling_vars = model.addVars(range(1, num_clusters + 1), lb=0)
+    stirling_vars = model.addVars(range(1, num_clusters + 1), lb=0)
     z = model.addVars(range(1, num_clusters + 1), lb=0, vtype=GRB.BINARY)
 
     # Objective #
@@ -118,8 +118,8 @@ def setup_miqcp_model(data_df, max_clusters=-1, min_clusters=0, verbose=False):
             for j in range(num_clusters)
         )
         + (p.sum() * C)
-        - sum_ln_kappa_rad,
-        # + sterling_vars.sum(),
+        - sum_ln_kappa_rad
+        + stirling_vars.sum(),
         GRB.MINIMIZE,
     )
 
@@ -195,7 +195,7 @@ def setup_miqcp_model(data_df, max_clusters=-1, min_clusters=0, verbose=False):
             )
 
     # Sterling number vars
-    # M2 = math.log(stirling2(num_datapoints, num_clusters)) * 2
+    M2 = math.log(stirling2(num_datapoints, num_clusters)) * 2
 
     model.addConstr(z.sum() == 1)
 
@@ -203,14 +203,14 @@ def setup_miqcp_model(data_df, max_clusters=-1, min_clusters=0, verbose=False):
         model.addConstr(p.sum() <= j * z[j] + num_clusters * (1 - z[j]))
         model.addConstr(p.sum() >= j * z[j])
 
-        # model.addConstr(
-        #     sterling_vars[j] - math.log(stirling2(num_datapoints, j))
-        #     <= M2 * (1 - z[j])
-        # )
-        # model.addConstr(
-        #     sterling_vars[j] - math.log(stirling2(num_datapoints, j))
-        #     >= -M2 * (1 - z[j])
-        # )
+        model.addConstr(
+            stirling_vars[j] - math.log(stirling2(num_datapoints, j))
+            <= M2 * (1 - z[j])
+        )
+        model.addConstr(
+            stirling_vars[j] - math.log(stirling2(num_datapoints, j))
+            >= -M2 * (1 - z[j])
+        )
 
     # Definition of variables chi
     # Equation B19
@@ -287,10 +287,11 @@ def find_max_clusters(data_df, verbose=False) -> int:
 
 
 def miqcp(
-    data_df: pd.DataFrame, verbose=False, preDual=False, preQLinearize=False
+    data_df: pd.DataFrame, verbose=False, preDual=False, preQLinearize=False, max_clusters = -1
 ):
-    max_clusters = find_max_clusters(data_df=data_df, verbose=verbose)
-    # max_clusters = 2
+    if max_clusters == -1:
+        max_clusters = find_max_clusters(data_df=data_df, verbose=verbose)
+
     if verbose:
         print(f"Max Clusters using COP-KMeans: {max_clusters}")
 

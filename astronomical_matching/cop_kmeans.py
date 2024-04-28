@@ -294,7 +294,7 @@ def transitive_closure(
 
 
 def run_cop_kmeans_single(
-    data_df: pd.DataFrame, min_k: int = 1, max_k: int = 50
+    data_df: pd.DataFrame, min_k: int = 1, max_k: int = 50, verbose = False
 ) -> tuple[list[int], int, float]:
     """Run cop-kmeans on a dataset
     Args:
@@ -322,7 +322,12 @@ def run_cop_kmeans_single(
     best_k = 0
     best_bayes = np.Inf
 
-    for k in range(min_k, max_k):
+    loop: Union[range, tqdm] = range(min_k, max_k)
+
+    if verbose:
+        loop = tqdm(range(min_k, max_k))
+
+    for k in loop:
         clusters, _ = cop_kmeans(
             dataset=coords,
             initialization="kmpp",
@@ -348,7 +353,7 @@ def run_cop_kmeans_single(
 def run_cop_kmeans(
     data_df: pd.DataFrame,
     min_k: int = 1,
-    max_k: int = 100,
+    max_k: int = -1,
     num_repeat=1,
     verbose=False,
 ) -> tuple[list[int], int, float]:
@@ -356,11 +361,12 @@ def run_cop_kmeans(
     best_k = -1
     best_bayes = float("inf")
     loop: Union[range, tqdm] = range(num_repeat)
-    max_k = data_df.shape[0]
+    if max_k == -1:
+        max_k = data_df.shape[0]
     if verbose:
         loop = tqdm(range(num_repeat))
     for _ in loop:
-        labels, k, bayes = run_cop_kmeans_single(data_df, min_k, max_k)
+        labels, k, bayes = run_cop_kmeans_single(data_df, min_k, max_k, verbose)
         if bayes < best_bayes:
             best_labels = labels
             best_k = k
