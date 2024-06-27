@@ -280,7 +280,8 @@ def find_max_clusters(data_df, verbose=False) -> int:
 
         model.optimize()
         max_cluster = c - 1
-        print(model.ObjVal, cop_kmeans_bayes)
+        if verbose:
+            print(model.ObjVal, cop_kmeans_bayes)
         if model.ObjVal > cop_kmeans_bayes:
             break
     return max_cluster
