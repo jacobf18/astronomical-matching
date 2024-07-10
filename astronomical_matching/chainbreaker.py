@@ -1,7 +1,7 @@
 import pandas as pd
 from scipy.cluster.hierarchy import fcluster, linkage  # type: ignore
 
-from .utils import neg_log_bayes
+from .utils import neg_log_bayes, neg_log_bayes_adjusted
 
 
 def chain_breaking(data_df: pd.DataFrame):
@@ -24,7 +24,7 @@ def chain_breaking(data_df: pd.DataFrame):
         cluster_labels = (
             fcluster(linkage_arr, t=n_clusters, criterion="maxclust") - 1
         )  # -1 because indexes from 1
-        bayes = neg_log_bayes(data_df, cluster_labels)
+        bayes = neg_log_bayes_adjusted(data_df, cluster_labels)
         if bayes < best_bayes:
             best_labels = cluster_labels
             best_bayes = bayes

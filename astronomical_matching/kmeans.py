@@ -4,7 +4,7 @@ import pandas as pd
 from sklearn.cluster import KMeans
 from tqdm import tqdm
 
-from .utils import neg_log_bayes
+from .utils import neg_log_bayes, neg_log_bayes_adjusted
 
 
 def run_kmeans(
@@ -29,7 +29,7 @@ def run_kmeans(
             X=coords, sample_weight=weights
         )
 
-        bayes = neg_log_bayes(data_df, kmeans.labels_)
+        bayes = neg_log_bayes_adjusted(data_df, kmeans.labels_)
 
         if bayes < best_bayes:
             best_bayes = bayes
