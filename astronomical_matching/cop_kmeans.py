@@ -9,6 +9,7 @@ from numpy.typing import ArrayLike
 from tqdm import tqdm
 
 from .utils import neg_log_bayes, neg_log_bayes_adjusted
+from .miqcp import find_max_clusters
 
 
 def cop_kmeans(
@@ -362,7 +363,7 @@ def run_cop_kmeans(
     best_bayes = float("inf")
     loop: Union[range, tqdm] = range(num_repeat)
     if max_k == -1:
-        max_k = data_df.shape[0]
+        max_k = find_max_clusters(data_df)
     if verbose:
         loop = tqdm(range(num_repeat))
     for _ in loop:

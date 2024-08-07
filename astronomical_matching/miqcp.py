@@ -8,7 +8,7 @@ from gurobipy import GRB, Model, quicksum  # type: ignore
 from scipy.spatial.distance import pdist  # type: ignore
 
 from .constants import ARCSEC_TO_RAD_2
-from .cop_kmeans import run_cop_kmeans
+
 from .utils import stirling2
 from typing import Union
 from tqdm import tqdm
@@ -262,6 +262,8 @@ def find_max_clusters(data_df, verbose=False) -> int:
     Returns:
         int: maximum number of clusters
     """
+    from .cop_kmeans import run_cop_kmeans
+    
     _, _, cop_kmeans_bayes = run_cop_kmeans(
         data_df, min_k=1, max_k=data_df.shape[0]
     )
