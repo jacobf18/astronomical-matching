@@ -6,24 +6,7 @@ import numpy as np
 import pandas as pd
 
 from .constants import ARCSEC_TO_RAD_2
-
-
-@lru_cache
-def stirling2(n, k):
-    """
-    Stirling number of the second kind.
-    See https://en.wikipedia.org/wiki/Stirling_numbers_of_the_second_kind.
-    """
-    if n == k == 0:
-        return 1
-    if (n > 0 and k == 0) or (n == 0 and k > 0):
-        return 0
-    if n == k:
-        return 1
-    if k > n:
-        return 0
-    return k * stirling2(n - 1, k) + stirling2(n - 1, k - 1)
-
+from scipy.special import stirling2
 
 def neg_log_bayes_adjusted(
     data_df: pd.DataFrame, labels: Union[list[int], np.ndarray]

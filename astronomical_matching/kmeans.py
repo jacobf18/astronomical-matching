@@ -9,7 +9,7 @@ from .miqcp import find_max_clusters
 
 
 def run_kmeans(
-    data_df: pd.DataFrame, min_k: int = None, max_k: int = None, verbose=False
+    data_df: pd.DataFrame, min_k: int = None, max_k: int = None, verbose=False, corrected = True
 ) -> tuple[list[int], int, float]:
     coords = data_df[["coord1 (arcseconds)", "coord2 (arcseconds)"]]
     weights = data_df["kappa"]
@@ -32,7 +32,10 @@ def run_kmeans(
             X=coords, sample_weight=weights
         )
 
-        bayes = neg_log_bayes_adjusted(data_df, kmeans.labels_)
+        if corrected:
+            bayes = neg_log_bayes_adjusted(data_df, kmeans.labels_)
+        else:
+            bayes = neg_log_bayes(data_df, kmeans.labels_)
 
         if bayes < best_bayes:
             best_bayes = bayes

@@ -9,7 +9,7 @@ from scipy.spatial.distance import pdist  # type: ignore
 
 from .constants import ARCSEC_TO_RAD_2
 
-from .utils import stirling2
+from scipy.special import stirling2
 from typing import Union
 from tqdm import tqdm
 
